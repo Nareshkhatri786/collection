@@ -177,11 +177,9 @@ const Dashboard = () => {
                       justifyContent: 'space-between',
                       padding: '12px 16px',
                       borderRadius: 'var(--radius-md)',
+                      background: 'var(--bg-card-hover)',
+                      border: '1px solid var(--border-card)',
                       borderLeft: `4px solid ${alertColors[alert.type] || 'var(--accent-primary)'}`,
-                      background: 'rgba(255,255,255,0.02)',
-                      border: `1px solid rgba(255,255,255,0.05)`,
-                      borderLeftWidth: '4px',
-                      borderLeftColor: alertColors[alert.type] || 'var(--accent-primary)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -264,7 +262,7 @@ const Dashboard = () => {
                     style={{
                       display: 'block', padding: '12px',
                       borderRadius: 'var(--radius-sm)',
-                      background: 'rgba(255,255,255,0.02)',
+                      background: 'var(--bg-card-hover)',
                       border: '1px solid var(--border-card)',
                       textDecoration: 'none', color: 'inherit'
                     }}

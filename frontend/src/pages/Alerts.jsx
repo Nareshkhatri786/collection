@@ -172,6 +172,15 @@ const Alerts = () => {
 const AlertCard = ({ alert, cfg, getDaysOverdue }) => {
   const daysOverdue = alert.type === 'OVERDUE' ? getDaysOverdue(alert.dueDate) : 0
 
+  // Light-mode background tints per alert type
+  const bgTints = {
+    OVERDUE: 'rgba(220,38,38,0.04)',
+    DUE_SOON: 'rgba(217,119,6,0.04)',
+    POSSESSION_NEAR: 'rgba(37,99,235,0.04)',
+    REGISTRY_DUE: 'rgba(124,92,252,0.04)',
+    GST_REVIEW: 'rgba(217,119,6,0.04)',
+  }
+
   return (
     <div
       className={`alert-item alert-${alert.type.toLowerCase()}`}
@@ -180,18 +189,19 @@ const AlertCard = ({ alert, cfg, getDaysOverdue }) => {
         justifyContent: 'space-between',
         padding: '16px 20px',
         borderRadius: 'var(--radius-md)',
-        border: '1px solid rgba(255,255,255,0.05)',
+        border: '1px solid rgba(0,0,0,0.07)',
         borderLeft: `5px solid ${cfg.color}`,
-        background: 'rgba(20,28,46,0.3)',
-        boxShadow: 'var(--shadow-card)',
-        gap: '16px'
+        background: bgTints[alert.type] || '#ffffff',
+        boxShadow: '0 1px 6px rgba(0,0,0,0.05)',
+        gap: '16px',
+        transition: 'all 0.2s ease'
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
         <span style={{ fontSize: '24px', flexShrink: 0 }}>{cfg.icon}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>
+            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
               Unit {alert.unitNumber} — {alert.clientName}
             </h4>
             {/* Priority Tag */}
@@ -236,3 +246,4 @@ const AlertCard = ({ alert, cfg, getDaysOverdue }) => {
 }
 
 export default Alerts
+
