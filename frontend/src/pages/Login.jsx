@@ -21,7 +21,6 @@ const Login = () => {
       toast.error('Please enter both email and password.')
       return
     }
-    
     try {
       setLoading(true)
       await login(email, password)
@@ -36,96 +35,150 @@ const Login = () => {
   }
 
   return (
-    <div className="login-container">
+    <div className="login-split-container">
       {/* Background Orbs */}
       <div className="orb orb-1"></div>
       <div className="orb orb-2"></div>
 
-      <div className="login-card">
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div className="login-logo" style={{ fontSize: '48px', marginBottom: '12px' }}>
-            🏢
-          </div>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)' }}>
-            Property Collection
-          </h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-            Sole Selling Agent Platform
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div className="form-group">
-            <label className="form-label" htmlFor="email">Email Address</label>
-            <input
-              id="email"
-              type="email"
-              className="form-input"
-              placeholder="e.g. admin@propertysystem.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              disabled={loading}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="password">Password</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                className="form-input"
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                style={{ width: '100%', paddingRight: '40px' }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  outline: 'none',
-                  userSelect: 'none'
-                }}
-              >
-                {showPassword ? '👁️' : '🙈'}
-              </button>
+      {/* Left — Login Form */}
+      <div className="login-split-left">
+        <div className="glass-card" style={{ width: '100%', maxWidth: '420px', padding: '40px' }}>
+          {/* Logo mark */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px' }}>
+            <div style={{
+              width: '44px', height: '44px',
+              background: 'var(--gradient-brand)',
+              borderRadius: '12px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '22px',
+              boxShadow: '0 4px 16px rgba(79,142,247,0.35)',
+              flexShrink: 0
+            }}>
+              🏢
+            </div>
+            <div>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+                Property Collection
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Management System
+              </div>
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary btn-lg"
-            style={{
-              width: '100%',
-              background: 'var(--gradient-brand)',
-              border: 'none',
-              marginTop: '10px',
-              height: '46px',
-              fontSize: '15px',
-              fontWeight: 600
-            }}
-            disabled={loading}
-          >
-            {loading ? 'Logging in... ⏳' : 'Login Securely →'}
-          </button>
-        </form>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)' }}>
+            Welcome back
+          </h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '28px' }}>
+            Sign in to your account to continue
+          </p>
 
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
-          Property Collection System v1.0.0
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="email">Email Address</label>
+              <input
+                id="email"
+                type="email"
+                className="form-input"
+                placeholder="e.g. admin@propertysystem.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                disabled={loading}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="password">Password</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-input"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  style={{ width: '100%', paddingRight: '44px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute', right: '12px', top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none', border: 'none',
+                    color: 'var(--text-secondary)', cursor: 'pointer',
+                    fontSize: '16px', outline: 'none', userSelect: 'none',
+                    lineHeight: 1
+                  }}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '👁️' : '🔒'}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              id="login-submit-btn"
+              className="btn btn-primary btn-lg btn-shimmer"
+              style={{
+                width: '100%', border: 'none',
+                marginTop: '8px', height: '48px',
+                fontSize: '15px', fontWeight: 700,
+                borderRadius: 'var(--radius-md)',
+                letterSpacing: '0.02em'
+              }}
+              disabled={loading}
+            >
+              {loading ? '⏳  Signing in...' : 'Login Securely →'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: '28px', textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
+            Property Collection System v1.0.0 · Secured Platform
+          </div>
+        </div>
+      </div>
+
+      {/* Right — Branding Panel */}
+      <div className="login-split-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="login-brand-panel">
+          <div className="login-brand-logo">🏗️</div>
+          <h2 className="login-brand-title">
+            Property Collection<br />
+            <span style={{ color: 'var(--accent-primary)' }}>Management</span>
+          </h2>
+          <p className="login-brand-subtitle">
+            The complete platform for sole-selling agents to track bookings, collections, and project milestones — all in one place.
+          </p>
+
+          <div className="login-usp-list">
+            <div className="login-usp-item">
+              <div className="login-usp-icon">📊</div>
+              <div className="login-usp-text">
+                <strong>Track Collections in Real Time</strong>
+                <span>Monitor every payment installment and due date as they happen</span>
+              </div>
+            </div>
+            <div className="login-usp-item">
+              <div className="login-usp-icon">🔔</div>
+              <div className="login-usp-text">
+                <strong>Registry & Possession Alerts</strong>
+                <span>Never miss a critical deadline with automated reminders</span>
+              </div>
+            </div>
+            <div className="login-usp-item">
+              <div className="login-usp-icon">💰</div>
+              <div className="login-usp-text">
+                <strong>Detailed Financial Ledgers</strong>
+                <span>Full cash flow visibility across margin, home loans, and labour</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

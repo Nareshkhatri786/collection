@@ -202,6 +202,42 @@ const Collections = () => {
         </div>
       </div>
 
+      {/* Summary Strip */}
+      {flatItems.length > 0 && (
+        <div className="collections-summary-strip">
+          <div className="collection-strip-item">
+            <div className="strip-value danger">{flatItems.length}</div>
+            <div className="strip-label">Pending Items</div>
+          </div>
+          <div className="collection-strip-item">
+            <div className="strip-value gold">
+              {formatINR(flatItems.reduce((sum, i) => sum + (i.amount - i.receivedAmount), 0))}
+            </div>
+            <div className="strip-label">Total Pending Amount</div>
+          </div>
+          <div className="collection-strip-item">
+            <div className="strip-value warning">
+              {flatItems.filter(i => {
+                const days = Math.floor((new Date() - new Date(i.dueDate)) / (1000 * 60 * 60 * 24))
+                return days > 0
+              }).length}
+            </div>
+            <div className="strip-label">Overdue Items</div>
+          </div>
+          <div className="collection-strip-item">
+            <div className="strip-value">
+              {flatItems.filter(i => {
+                const d = new Date(i.dueDate)
+                const now = new Date()
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+              }).length}
+            </div>
+            <div className="strip-label">Due This Month</div>
+          </div>
+        </div>
+      )}
+
+
       {/* Filters card */}
       <div className="card" style={{ marginBottom: '24px', padding: '16px' }}>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
@@ -263,15 +299,23 @@ const Collections = () => {
             <tbody>
               {sortedItems.map((item, idx) => {
                 const unpaid = item.amount - item.receivedAmount
+                const daysOverdue = Math.floor((new Date() - new Date(item.dueDate)) / (1000 * 60 * 60 * 24))
+                const isOverdue = daysOverdue > 0
                 
                 return (
-                  <tr 
-                    key={idx} 
-                    style={{ borderLeft: '4px solid var(--accent-danger)', background: 'rgba(248,113,113,0.01)' }}
-                    className="table-row-hover"
+                  <tr
+                    key={idx}
+                    style={{
+                      borderLeft: `4px solid ${isOverdue ? 'var(--accent-danger)' : 'var(--border-card)'}`,
+                      background: isOverdue ? 'rgba(248,113,113,0.04)' : 'transparent'
+                    }}
                   >
-                    <td style={{ fontWeight: 600, color: 'var(--accent-danger)' }}>
-                      {new Date(item.dueDate).toLocaleDateString()}
+                    <td style={{ fontWeight: 600, color: isOverdue ? 'var(--accent-danger)' : 'var(--text-primary)' }}>
+                      <div>{new Date(item.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                      {isOverdue && (
+                        <span className="days-overdue-badge" style={{ marginTop: '4px' }}>{daysOverdue}d overdue</span>
+                      )}
+
                     </td>
                     <td style={{ fontWeight: 700 }}>
                       <Link to={`/deals/${item.dealId}`} style={{ color: 'var(--accent-info)', textDecoration: 'none' }}>

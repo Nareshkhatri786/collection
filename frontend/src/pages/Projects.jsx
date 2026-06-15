@@ -178,50 +178,86 @@ const Projects = () => {
           {filteredProjects.map((p) => {
             const stats = projectStats[p.id] || { totalUnits: 0, bookedUnits: 0, registeredUnits: 0, totalCollected: 0 }
             const bookedPct = stats.totalUnits > 0 ? Math.round(((stats.bookedUnits + stats.registeredUnits) / stats.totalUnits) * 100) : 0
-            
+            const isUnderConst = p.status === 'UNDER_CONSTRUCTION'
+
+            // Possession countdown
+            let possessionLabel = null
+            let countdownClass = ''
+            if (p.possessionDate) {
+              const daysLeft = Math.ceil((new Date(p.possessionDate) - new Date()) / (1000 * 60 * 60 * 24))
+              if (daysLeft < 0) {
+                possessionLabel = `${Math.abs(daysLeft)}d Overdue`
+                countdownClass = 'urgent'
+              } else if (daysLeft <= 90) {
+                possessionLabel = `${daysLeft}d to Possession`
+                countdownClass = 'soon'
+              } else {
+                possessionLabel = `${daysLeft}d to Possession`
+                countdownClass = ''
+              }
+            }
+
             return (
-              <div 
-                key={p.id} 
-                className="card card-hover-effect" 
+              <div
+                key={p.id}
+                className="card card-hover-effect"
                 onClick={() => navigate(`/projects/${p.id}`)}
-                style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '220px' }}
+                style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '240px' }}
               >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>{p.name}</h3>
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className={`status-dot ${isUnderConst ? 'active' : 'ready'}`}></span>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700 }}>{p.name}</h3>
+                    </div>
                     <StatusBadge status={p.status} type="project" />
                   </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                    🏢 {p.developerName} • 📍 {p.location}
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                    🏢 {p.developerName} &nbsp;•&nbsp; 📍 {p.location}
                   </div>
+                  {/* Possession Countdown */}
+                  {possessionLabel && isUnderConst && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <span className={`possession-countdown ${countdownClass}`}>
+                        🏁 {possessionLabel}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
-                  {/* Progress Bar */}
-                  <div style={{ marginBottom: '16px' }}>
+                  {/* Collection Progress Bar */}
+                  <div style={{ marginBottom: '12px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>Booked/Registered:</span>
                       <strong style={{ color: 'var(--accent-info)' }}>
                         {stats.bookedUnits + stats.registeredUnits} / {stats.totalUnits} Units ({bookedPct}%)
                       </strong>
                     </div>
-                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ width: `${bookedPct}%`, height: '100%', background: 'var(--gradient-brand)', borderRadius: '3px' }}></div>
+                    <div className="progress-bar-wrap">
+                      <div className="progress-bar-fill" style={{ width: `${bookedPct}%` }}></div>
                     </div>
                   </div>
 
-                  <hr style={{ border: 0, borderTop: '1px solid rgba(255,255,255,0.06)', margin: '12px 0' }} />
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Total Collection</div>
-                      <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--accent-gold)' }}>
-                        {formatINR(stats.totalCollected)}
-                      </div>
+                  {/* Micro Stats Footer */}
+                  <div className="project-micro-stats">
+                    <div className="project-micro-stat">
+                      <div className="ms-val">{stats.totalUnits || 0}</div>
+                      <div className="ms-label">Total</div>
                     </div>
-                    <span style={{ color: 'var(--accent-primary)', fontSize: '12px', fontWeight: 600 }}>
-                      View Details →
-                    </span>
+                    <div className="project-micro-stat">
+                      <div className="ms-val" style={{ color: 'var(--accent-warning)' }}>{stats.bookedUnits || 0}</div>
+                      <div className="ms-label">Booked</div>
+                    </div>
+                    <div className="project-micro-stat">
+                      <div className="ms-val" style={{ color: 'var(--accent-success)' }}>{stats.registeredUnits || 0}</div>
+                      <div className="ms-label">Registered</div>
+                    </div>
+                    <div className="project-micro-stat">
+                      <div className="ms-val" style={{ color: 'var(--accent-gold)', fontSize: '12px' }}>{formatINR(stats.totalCollected)}</div>
+                      <div className="ms-label">Collected</div>
+                    </div>
                   </div>
                 </div>
               </div>
