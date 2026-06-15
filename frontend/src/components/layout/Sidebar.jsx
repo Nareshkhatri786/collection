@@ -83,7 +83,7 @@ const NavItem = ({ to, icon, label, end }) => (
   </NavLink>
 )
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const { user, logout, isAdmin, isDeveloper } = useAuth()
   const navigate = useNavigate()
 
@@ -93,7 +93,9 @@ const Sidebar = () => {
   const roleLabel = { ADMIN: 'Administrator', STAFF: 'Staff', DEVELOPER: 'Developer' }[user?.role] || ''
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+      {/* Close button on mobile */}
+      <button className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">✕</button>
       {/* Upgraded Brand Block */}
       <div className="sidebar-brand">
         <div className="sidebar-brand-mark">🏢</div>
