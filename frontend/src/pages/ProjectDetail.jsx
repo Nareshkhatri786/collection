@@ -42,6 +42,13 @@ const ProjectDetail = () => {
   const [typeSaving, setTypeSaving] = useState(false)
   const [editingType, setEditingType] = useState(null)
 
+  // ── Edit Project Modal ───────────────────────────────────────────────────
+  const [openEditProjectModal, setOpenEditProjectModal] = useState(false)
+  const [editProjectForm, setEditProjectForm] = useState({
+    name: '', developerName: '', location: '', status: '', maintenanceDeposit: '', possessionDate: ''
+  })
+  const [projectSaving, setProjectSaving] = useState(false)
+
   const fetchProjectData = async () => {
     try {
       setLoading(true)
@@ -53,11 +60,21 @@ const ProjectDetail = () => {
         api.get(`/projects/${id}/unit-types`)
       ])
 
-      setProject(projRes.data.data)
+      const proj = projRes.data.data
+      setProject(proj)
       setUnits(unitsRes.data.data)
       setDeals(dealsRes.data.data)
       setStats(statsRes.data.data)
       setUnitTypes(typesRes.data.data)
+
+      setEditProjectForm({
+        name: proj.name,
+        developerName: proj.developerName,
+        location: proj.location,
+        status: proj.status,
+        maintenanceDeposit: proj.maintenanceDeposit || '',
+        possessionDate: proj.possessionDate ? new Date(proj.possessionDate).toISOString().split('T')[0] : ''
+      })
     } catch (err) {
       toast.error('Failed to load project details.')
       navigate('/projects')
@@ -69,6 +86,29 @@ const ProjectDetail = () => {
   useEffect(() => {
     fetchProjectData()
   }, [id])
+
+  // ── Handle Edit Project Submit ───────────────────────────────────────────
+  const handleEditProjectSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      setProjectSaving(true)
+      await api.put(`/projects/${id}`, {
+        name: editProjectForm.name,
+        developerName: editProjectForm.developerName,
+        location: editProjectForm.location,
+        status: editProjectForm.status,
+        maintenanceDeposit: editProjectForm.maintenanceDeposit ? parseFloat(editProjectForm.maintenanceDeposit) : null,
+        possessionDate: editProjectForm.status === 'READY' ? null : (editProjectForm.possessionDate || null)
+      })
+      toast.success('Mandate settings updated successfully! 🎉')
+      setOpenEditProjectModal(false)
+      fetchProjectData()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update project settings.')
+    } finally {
+      setProjectSaving(false)
+    }
+  }
 
   // ── Create / Edit Unit Type ───────────────────────────────────
   const openAddType = () => {
@@ -220,6 +260,11 @@ const ProjectDetail = () => {
           <Link to="/projects" className="btn btn-secondary">
             ← Back to Mandates
           </Link>
+          {isAdmin() && (
+            <button className="btn btn-ghost" onClick={() => setOpenEditProjectModal(true)} style={{ border: '1px solid var(--border-primary)' }}>
+              ⚙️ Edit Mandate Settings
+            </button>
+          )}
           {!isDeveloper() && (
             <Link to={`/deals/new?projectId=${project.id}`} className="btn btn-primary">
               ➕ New Booking
@@ -731,6 +776,84 @@ const ProjectDetail = () => {
             </button>
             <button type="submit" className="btn btn-primary" disabled={typeSaving}>
               {typeSaving ? 'Saving... ⏳' : (editingType ? '✅ Update Type' : '✅ Add Type')}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Edit Project Settings Modal ───────────────────────────────────────── */}
+      <Modal open={openEditProjectModal} onClose={() => setOpenEditProjectModal(false)} title="⚙️ Edit Mandate Settings">
+        <form onSubmit={handleEditProjectSubmit}>
+          <FormField label="Project Name" required>
+            <input
+              className="form-input"
+              value={editProjectForm.name}
+              onChange={e => setEditProjectForm({ ...editProjectForm, name: e.target.value })}
+              required
+            />
+          </FormField>
+
+          <div className="form-row-2">
+            <FormField label="Developer Name" required>
+              <input
+                className="form-input"
+                value={editProjectForm.developerName}
+                onChange={e => setEditProjectForm({ ...editProjectForm, developerName: e.target.value })}
+                required
+              />
+            </FormField>
+            <FormField label="Location" required>
+              <input
+                className="form-input"
+                value={editProjectForm.location}
+                onChange={e => setEditProjectForm({ ...editProjectForm, location: e.target.value })}
+                required
+              />
+            </FormField>
+          </div>
+
+          <div className="form-row-2">
+            <FormField label="Project Status">
+              <select
+                className="form-select"
+                value={editProjectForm.status}
+                onChange={e => setEditProjectForm({ ...editProjectForm, status: e.target.value })}
+              >
+                <option value="UNDER_CONSTRUCTION">Under Construction</option>
+                <option value="READY">Ready</option>
+              </select>
+            </FormField>
+            <FormField label="Maintenance Deposit (₹)">
+              <input
+                type="number"
+                className="form-input"
+                value={editProjectForm.maintenanceDeposit}
+                onChange={e => setEditProjectForm({ ...editProjectForm, maintenanceDeposit: e.target.value })}
+              />
+            </FormField>
+          </div>
+
+          <FormField
+            label="Target Possession Date"
+            required={editProjectForm.status === 'UNDER_CONSTRUCTION'}
+            hint="Changing this will automatically update all deal schedules and client print layouts linked to this mandate"
+          >
+            <input
+              type="date"
+              className="form-input"
+              value={editProjectForm.possessionDate}
+              onChange={e => setEditProjectForm({ ...editProjectForm, possessionDate: e.target.value })}
+              disabled={editProjectForm.status === 'READY'}
+              required={editProjectForm.status === 'UNDER_CONSTRUCTION'}
+            />
+          </FormField>
+
+          <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setOpenEditProjectModal(false)} disabled={projectSaving}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={projectSaving}>
+              {projectSaving ? 'Saving Changes... ⏳' : 'Save Changes ✅'}
             </button>
           </div>
         </form>
