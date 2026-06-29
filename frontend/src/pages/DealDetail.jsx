@@ -9,6 +9,7 @@ import EmptyState from '../components/ui/EmptyState'
 import Modal from '../components/ui/Modal'
 import FormField from '../components/ui/FormField'
 import ReceiptButton from '../components/ui/ReceiptButton'
+import DealPrintView from '../components/deals/DealPrintView'
 import toast from 'react-hot-toast'
 
 const DealDetail = () => {
@@ -182,6 +183,15 @@ const DealDetail = () => {
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to delete record.')
     }
+
+  const handlePrintDeal = () => {
+    const printArea = document.getElementById('deal-print-area')
+    if (printArea) {
+      printArea.style.display = 'block'
+      window.print()
+      setTimeout(() => { printArea.style.display = 'none' }, 500)
+    }
+  }
   }
 
   if (loading && !deal) {
@@ -210,10 +220,14 @@ const DealDetail = () => {
             👤 Client: <strong>{deal.client?.name}</strong> ({deal.client?.mobile}) | 🏢 Project: <strong>{deal.project?.name}</strong>
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <Link to="/deals" className="btn btn-secondary">
             ← Deals Directory
           </Link>
+          <button className="btn btn-ghost" onClick={handlePrintDeal}
+            style={{ border: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            🖨️ Print / Hard Copy
+          </button>
           {isAdmin() && (
             <button className="btn btn-primary" onClick={() => setOpenRegistryModal(true)}>
               🛡️ Update Registry Status
@@ -756,6 +770,9 @@ const DealDetail = () => {
           </div>
         </form>
       </Modal>
+
+      {/* ── Hidden Print Area ── */}
+      <DealPrintView deal={deal} summary={summary} />
     </div>
   )
 }
