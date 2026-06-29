@@ -183,6 +183,7 @@ const DealDetail = () => {
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to delete record.')
     }
+  }
 
   const handlePrintDeal = () => {
     const printArea = document.getElementById('deal-print-area')
@@ -191,7 +192,6 @@ const DealDetail = () => {
       window.print()
       setTimeout(() => { printArea.style.display = 'none' }, 500)
     }
-  }
   }
 
   if (loading && !deal) {
