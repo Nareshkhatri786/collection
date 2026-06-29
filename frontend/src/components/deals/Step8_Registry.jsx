@@ -43,7 +43,7 @@ const Step8_Registry = ({ formData, update, onPrev, onSubmit, saving }) => {
 
       <div className="form-row-2">
         {isUnderConstruction && (
-          <FormField label="Target Possession Date" required hint="Expected possession handover date">
+          <FormField label="Target Possession Date" required hint="Pre-filled from project details (change if different for this unit)">
             <input
               type="date"
               className="form-input"

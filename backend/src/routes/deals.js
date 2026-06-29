@@ -39,7 +39,7 @@ router.get('/', async (req, res, next) => {
       prisma.deal.findMany({
         where, skip, take: parseInt(limit),
         include: {
-          project: { select: { id: true, name: true } },
+          project: { select: { id: true, name: true, possessionDate: true } },
           unit: { select: { id: true, unitNumber: true, status: true } },
           client: { select: { id: true, name: true, mobile: true } }
         },
@@ -48,7 +48,14 @@ router.get('/', async (req, res, next) => {
       prisma.deal.count({ where })
     ]);
 
-    res.json({ success: true, data: deals, pagination: { total, page: parseInt(page), limit: parseInt(limit), pages: Math.ceil(total / parseInt(limit)) } });
+    const mappedDeals = deals.map(d => {
+      if (!d.possessionDate && d.project) {
+        d.possessionDate = d.project.possessionDate;
+      }
+      return d;
+    });
+
+    res.json({ success: true, data: mappedDeals, pagination: { total, page: parseInt(page), limit: parseInt(limit), pages: Math.ceil(total / parseInt(limit)) } });
   } catch (err) { next(err); }
 });
 
@@ -207,7 +214,7 @@ router.get('/:id', async (req, res, next) => {
     const deal = await prisma.deal.findUnique({
       where: { id: parseInt(req.params.id) },
       include: {
-        project: { select: { id: true, name: true, developerName: true, status: true } },
+        project: { select: { id: true, name: true, developerName: true, status: true, possessionDate: true } },
         unit: { select: { id: true, unitNumber: true, floor: true, carpetArea: true, unitType: { select: { typeName: true } } } },
         client: true,
         createdByUser: { select: { id: true, name: true } },
@@ -218,6 +225,9 @@ router.get('/:id', async (req, res, next) => {
       }
     });
     if (!deal) return res.status(404).json({ success: false, error: 'Deal not found.' });
+    if (!deal.possessionDate && deal.project) {
+      deal.possessionDate = deal.project.possessionDate;
+    }
     res.json({ success: true, data: deal });
   } catch (err) { next(err); }
 });

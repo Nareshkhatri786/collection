@@ -16,7 +16,8 @@ const Step2_Unit = ({ formData, update, onNext, onPrev }) => {
   }, [])
 
   const selectProject = async (project) => {
-    update({ project, unit: null })
+    const formattedPossDate = project.possessionDate ? new Date(project.possessionDate).toISOString().split('T')[0] : ''
+    update({ project, unit: null, possessionDate: formattedPossDate })
     setLoadingUnits(true)
     try {
       const res = await api.get(`/projects/${project.id}/units`, { params: { status: 'AVAILABLE' } })
