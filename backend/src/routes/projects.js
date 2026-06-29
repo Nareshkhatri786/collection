@@ -149,9 +149,13 @@ router.get('/:id/unit-types', async (req, res, next) => {
 router.post('/:id/unit-types', authorize('ADMIN'), async (req, res, next) => {
   try {
     const { typeName, basePrice } = req.body;
-    if (!typeName || basePrice === undefined) return res.status(400).json({ success: false, error: 'typeName and basePrice are required.' });
+    if (!typeName) return res.status(400).json({ success: false, error: 'typeName is required.' });
     const unitType = await prisma.unitType.create({
-      data: { projectId: parseInt(req.params.id), typeName, basePrice: parseFloat(basePrice) }
+      data: {
+        projectId: parseInt(req.params.id),
+        typeName,
+        basePrice: basePrice !== undefined && basePrice !== '' ? parseFloat(basePrice) : null
+      }
     });
     res.status(201).json({ success: true, data: unitType });
   } catch (err) { next(err); }

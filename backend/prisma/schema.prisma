@@ -107,7 +107,7 @@ model UnitType {
   id        Int     @id @default(autoincrement())
   projectId Int
   typeName  String
-  basePrice Decimal @db.Decimal(12, 2)
+  basePrice Decimal? @db.Decimal(12, 2)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   units   Unit[]
