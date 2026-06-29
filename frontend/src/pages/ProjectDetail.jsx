@@ -36,6 +36,12 @@ const ProjectDetail = () => {
   const [bulkUnit, setBulkUnit] = useState({ unitTypeId: '', floor: '', carpetArea: '', prefix: '', startNumber: '101', count: '5' })
   const [bulkSaving, setBulkSaving] = useState(false)
 
+  // ── Unit Types Management ────────────────────────────────────────────────
+  const [openTypeModal, setOpenTypeModal] = useState(false)
+  const [typeForm, setTypeForm] = useState({ typeName: '' })
+  const [typeSaving, setTypeSaving] = useState(false)
+  const [editingType, setEditingType] = useState(null)
+
   const fetchProjectData = async () => {
     try {
       setLoading(true)
@@ -63,6 +69,51 @@ const ProjectDetail = () => {
   useEffect(() => {
     fetchProjectData()
   }, [id])
+
+  // ── Create / Edit Unit Type ───────────────────────────────────
+  const openAddType = () => {
+    setEditingType(null)
+    setTypeForm({ typeName: '' })
+    setOpenTypeModal(true)
+  }
+
+  const openEditType = (ut) => {
+    setEditingType(ut)
+    setTypeForm({ typeName: ut.typeName })
+    setOpenTypeModal(true)
+  }
+
+  const handleSaveType = async (e) => {
+    e.preventDefault()
+    if (!typeForm.typeName.trim()) { toast.error('Type name is required.'); return }
+    try {
+      setTypeSaving(true)
+      if (editingType) {
+        await api.put(`/projects/${id}/unit-types/${editingType.id}`, { typeName: typeForm.typeName })
+        toast.success(`✅ Type "${typeForm.typeName}" updated!`)
+      } else {
+        await api.post(`/projects/${id}/unit-types`, { typeName: typeForm.typeName })
+        toast.success(`✅ Type "${typeForm.typeName}" added!`)
+      }
+      setOpenTypeModal(false)
+      fetchProjectData()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save type.')
+    } finally {
+      setTypeSaving(false)
+    }
+  }
+
+  const handleDeleteType = async (ut) => {
+    if (!window.confirm(`Delete unit type "${ut.typeName}"? This will unlink it from existing units.`)) return
+    try {
+      await api.delete(`/projects/${id}/unit-types/${ut.id}`)
+      toast.success(`Deleted type "${ut.typeName}"`)
+      fetchProjectData()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Cannot delete — units may be linked to this type.')
+    }
+  }
 
   // ── Create Single Unit ───────────────────────────────────────────────────
   const handleCreateSingle = async (e) => {
@@ -195,6 +246,11 @@ const ProjectDetail = () => {
         <button onClick={() => { setActiveTab('deals'); setSearchQuery('') }} style={tabStyle('deals')}>
           🤝 Booked Deals ({deals.length})
         </button>
+        {isAdmin() && (
+          <button onClick={() => setActiveTab('types')} style={tabStyle('types')}>
+            🏷️ Unit Types ({unitTypes.length})
+          </button>
+        )}
         <button onClick={() => setActiveTab('reports')} style={tabStyle('reports')}>
           📊 Mandate Reports
         </button>
@@ -367,6 +423,68 @@ const ProjectDetail = () => {
             </table>
           </div>
         )
+      )}
+
+      {/* Tab Contents: Unit Types */}
+      {activeTab === 'types' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div>
+              <h3 style={{ color: 'var(--text-primary)', marginBottom: '4px' }}>Unit Configurations</h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                Define types like <strong>2 BHK</strong>, <strong>3 BHK</strong>, <strong>Plot</strong>, <strong>Shop</strong> etc. before adding units.
+              </p>
+            </div>
+            <button className="btn btn-primary" onClick={openAddType}>
+              ➕ Add Unit Type
+            </button>
+          </div>
+
+          {unitTypes.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '2px dashed var(--border-primary)' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏷️</div>
+              <h4 style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>No unit types defined yet</h4>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '14px' }}>
+                Add types like "2 BHK", "3 BHK", "Plot 30×40" etc. to categorize your inventory.
+              </p>
+              <button className="btn btn-primary" onClick={openAddType}>➕ Add First Unit Type</button>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+              {unitTypes.map(ut => (
+                <div key={ut.id} className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                        {ut.typeName}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {units.filter(u => u.unitTypeId === ut.id).length} units linked
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '24px' }}>🏠</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => openEditType(ut)}
+                      style={{ flex: 1 }}
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => handleDeleteType(ut)}
+                      style={{ color: 'var(--accent-error)', border: '1px solid var(--accent-error)' }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Tab Contents: Reports */}
@@ -567,6 +685,52 @@ const ProjectDetail = () => {
             </button>
             <button type="submit" className="btn btn-primary" disabled={bulkSaving}>
               {bulkSaving ? 'Generating... ⏳' : `Generate ${bulkUnit.count || 0} Units 🗂️`}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Add / Edit Unit Type Modal ─────────────────────────────────────────── */}
+      <Modal
+        open={openTypeModal}
+        onClose={() => setOpenTypeModal(false)}
+        title={editingType ? `✏️ Edit Unit Type — ${editingType.typeName}` : '🏷️ Add Unit Type'}
+      >
+        <form onSubmit={handleSaveType}>
+          <div style={{ marginBottom: '16px', padding: '14px', background: 'rgba(79,142,247,0.06)', borderRadius: 'var(--radius-md)', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+            💡 Unit Type is the <strong>configuration/category</strong> of the unit — for example:
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+              {['2 BHK', '3 BHK', '4 BHK', 'Plot 30×40', 'Shop', 'Office'].map(ex => (
+                <span
+                  key={ex}
+                  onClick={() => setTypeForm({ typeName: ex })}
+                  style={{ padding: '4px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: '20px', cursor: 'pointer', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, transition: 'all 0.15s' }}
+                  onMouseEnter={e => { e.target.style.borderColor = 'var(--accent-primary)'; e.target.style.color = 'var(--accent-primary)' }}
+                  onMouseLeave={e => { e.target.style.borderColor = 'var(--border-primary)'; e.target.style.color = 'var(--text-primary)' }}
+                >
+                  {ex}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <FormField label="Type Name" required hint="e.g. 2 BHK, 3 BHK, Plot 30×40, Shop, Villa">
+            <input
+              className="form-input"
+              placeholder="Enter type name..."
+              value={typeForm.typeName}
+              onChange={e => setTypeForm({ typeName: e.target.value })}
+              autoFocus
+              required
+            />
+          </FormField>
+
+          <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setOpenTypeModal(false)} disabled={typeSaving}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={typeSaving}>
+              {typeSaving ? 'Saving... ⏳' : (editingType ? '✅ Update Type' : '✅ Add Type')}
             </button>
           </div>
         </form>
