@@ -49,7 +49,7 @@ router.get('/', async (req, res, next) => {
     ]);
 
     const mappedDeals = deals.map(d => {
-      if (!d.possessionDate && d.project) {
+      if (d.project && d.project.possessionDate) {
         d.possessionDate = d.project.possessionDate;
       }
       return d;
@@ -225,7 +225,7 @@ router.get('/:id', async (req, res, next) => {
       }
     });
     if (!deal) return res.status(404).json({ success: false, error: 'Deal not found.' });
-    if (!deal.possessionDate && deal.project) {
+    if (deal.project && deal.project.possessionDate) {
       deal.possessionDate = deal.project.possessionDate;
     }
     res.json({ success: true, data: deal });
