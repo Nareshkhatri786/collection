@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
 
 // POST /api/auth/login
 router.post('/login', [
-  body('email').isEmail().withMessage('Valid email is required'),
+  body('email').notEmpty().withMessage('Email or Login ID is required'),
   body('password').notEmpty().withMessage('Password is required')
 ], handleValidation, async (req, res, next) => {
   try {

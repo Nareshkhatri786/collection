@@ -88,14 +88,7 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="users"
-              element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
-                  <Users />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="users" element={<Users />} />
 
             {/* Fallback 404 inside layout */}
             <Route path="*" element={<NotFound />} />

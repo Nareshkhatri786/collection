@@ -75,12 +75,12 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" htmlFor="email">Email Address</label>
+              <label className="form-label" htmlFor="email">Email / Login ID</label>
               <input
                 id="email"
-                type="email"
+                type="text"
                 className="form-input"
-                placeholder="e.g. admin@propertysystem.com"
+                placeholder="e.g. admin or admin@propertysystem.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required

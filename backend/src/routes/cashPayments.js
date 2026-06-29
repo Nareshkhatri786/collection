@@ -5,6 +5,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { handleValidation } = require('../middleware/errorHandler');
 const { auditMiddleware } = require('../middleware/auditLog');
 const { computePaymentStatus } = require('../services/alertsService');
+const { generateVoucherNumber } = require('../services/voucherService');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -51,14 +52,17 @@ router.post('/:installmentId/receive', authorize('ADMIN', 'STAFF'), [
     const due = parseFloat(item.amount);
     const status = received >= due ? 'RECEIVED' : 'PARTIAL';
 
+    // Auto-generate receipt number for cash collections
+    const receiptNumber = generateVoucherNumber('RCP');
+
     const old = { status: item.status, receivedAmount: item.receivedAmount };
     const updated = await prisma.cashSchedule.update({
       where: { id },
-      data: { receivedDate: new Date(receivedDate), receivedAmount: received, status }
+      data: { receivedDate: new Date(receivedDate), receivedAmount: received, receiptNumber, status }
     });
 
-    await req.audit('CashSchedule', id, 'MARK_RECEIVED', old, { receivedAmount: received, status });
-    res.json({ success: true, data: { ...updated, computedStatus: status } });
+    await req.audit('CashSchedule', id, 'MARK_RECEIVED', old, { receivedAmount: received, status, receiptNumber });
+    res.json({ success: true, data: { ...updated, computedStatus: status, receiptNumber } });
   } catch (err) { next(err); }
 });
 

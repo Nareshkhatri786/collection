@@ -4,6 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const { authenticate, authorize } = require('../middleware/auth');
 const { handleValidation } = require('../middleware/errorHandler');
 const { auditMiddleware } = require('../middleware/auditLog');
+const { generateVoucherNumber } = require('../services/voucherService');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -35,12 +36,15 @@ router.post('/:dealId', [
     const deal = await prisma.deal.findUnique({ where: { id: dealId } });
     if (!deal) return res.status(404).json({ success: false, error: 'Deal not found.' });
 
+    // Auto-generate cash voucher number
+    const voucherNumber = generateVoucherNumber('CVR');
+
     const payment = await prisma.labourPayment.create({
-      data: { dealId, paidDate: new Date(paidDate), amount: parseFloat(amount), description: description || null, paidBy: req.user.id },
+      data: { dealId, paidDate: new Date(paidDate), amount: parseFloat(amount), description: description || null, paidBy: req.user.id, voucherNumber },
       include: { paidByUser: { select: { name: true } } }
     });
 
-    await req.audit('LabourPayment', payment.id, 'CREATE', null, { dealId, amount: parseFloat(amount), paidDate });
+    await req.audit('LabourPayment', payment.id, 'CREATE', null, { dealId, amount: parseFloat(amount), paidDate, voucherNumber });
     res.status(201).json({ success: true, data: payment });
   } catch (err) { next(err); }
 });

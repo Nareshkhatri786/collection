@@ -88,7 +88,7 @@ const Step2_Unit = ({ formData, update, onNext, onPrev }) => {
                     }}>
                     <div style={{ fontSize: '16px', fontWeight: 800, color: selected ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{u.unitNumber}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>{u.unitType?.typeName || '—'}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Floor {u.floor ?? '—'} • {u.carpetArea ?? '—'} sq ft</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Floor {u.floor ?? '—'} • {u.carpetArea ?? '—'} Sq Yd</div>
                     {selected && <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--accent-success)', fontWeight: 700 }}>✓ Selected</div>}
                   </div>
                 )

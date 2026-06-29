@@ -30,7 +30,12 @@ const TopBar = ({ onMenuClick }) => {
   }, [])
 
   const key = Object.keys(pageTitles).find(k => pathname.startsWith(k)) || '/dashboard'
-  const { title, sub } = pageTitles[key] || { title: 'Page', sub: '' }
+  let { title, sub } = pageTitles[key] || { title: 'Page', sub: '' }
+
+  if (key === '/users' && user?.role !== 'ADMIN') {
+    title = 'My Account'
+    sub = 'View profile details and change your password'
+  }
 
   const roleLabel = { ADMIN: 'Admin', STAFF: 'Staff', DEVELOPER: 'Developer' }[user?.role] || user?.role
 

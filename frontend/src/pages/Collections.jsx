@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import Modal from '../components/ui/Modal'
 import FormField from '../components/ui/FormField'
+import ReceiptButton from '../components/ui/ReceiptButton'
 import toast from 'react-hot-toast'
 
 const Collections = () => {
@@ -34,6 +35,7 @@ const Collections = () => {
     receiptNumber: ''
   })
   const [saving, setSaving] = useState(false)
+  const [lastReceipt, setLastReceipt] = useState(null) // { number, type, id }
 
   const fetchFilters = async () => {
     try {
@@ -156,8 +158,20 @@ const Collections = () => {
         endpoint = `/cash/${activeItem.id}/receive`
       }
 
-      await api.post(endpoint, payload)
-      toast.success('Collection logged successfully! 💰')
+      const res = await api.post(endpoint, payload)
+      const rNo = res.data.data?.receiptNumber
+      if (rNo) {
+        setLastReceipt({ number: rNo, type: activeItem.type.toLowerCase(), id: activeItem.id })
+        toast.success(
+          <div>
+            <div>✅ Collection logged!</div>
+            <div style={{ fontSize: '11px', marginTop: '4px', fontFamily: 'monospace', color: '#a3e635' }}>🧾 {rNo}</div>
+          </div>,
+          { duration: 5000 }
+        )
+      } else {
+        toast.success('Collection logged successfully! 💰')
+      }
       setOpenReceiveModal(false)
       fetchCollections()
     } catch (err) {

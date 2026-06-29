@@ -7,6 +7,8 @@ import StatusBadge from '../components/ui/StatusBadge'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import StatCard from '../components/ui/StatCard'
+import Modal from '../components/ui/Modal'
+import FormField from '../components/ui/FormField'
 import toast from 'react-hot-toast'
 
 const ProjectDetail = () => {
@@ -22,21 +24,34 @@ const ProjectDetail = () => {
   const [activeTab, setActiveTab] = useState('units')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [unitTypes, setUnitTypes] = useState([])
+
+  // ── Add Single Unit Modal ─────────────────────────────────────────────────
+  const [openSingleModal, setOpenSingleModal] = useState(false)
+  const [singleUnit, setSingleUnit] = useState({ unitTypeId: '', unitNumber: '', floor: '', carpetArea: '' })
+  const [singleSaving, setSingleSaving] = useState(false)
+
+  // ── Bulk Generate Modal ───────────────────────────────────────────────────
+  const [openBulkModal, setOpenBulkModal] = useState(false)
+  const [bulkUnit, setBulkUnit] = useState({ unitTypeId: '', floor: '', carpetArea: '', prefix: '', startNumber: '101', count: '5' })
+  const [bulkSaving, setBulkSaving] = useState(false)
 
   const fetchProjectData = async () => {
     try {
       setLoading(true)
-      const [projRes, unitsRes, dealsRes, statsRes] = await Promise.all([
+      const [projRes, unitsRes, dealsRes, statsRes, typesRes] = await Promise.all([
         api.get(`/projects/${id}`),
         api.get(`/projects/${id}/units`),
         api.get(`/deals?projectId=${id}`),
-        api.get(`/projects/${id}/stats`)
+        api.get(`/projects/${id}/stats`),
+        api.get(`/projects/${id}/unit-types`)
       ])
 
       setProject(projRes.data.data)
       setUnits(unitsRes.data.data)
       setDeals(dealsRes.data.data)
       setStats(statsRes.data.data)
+      setUnitTypes(typesRes.data.data)
     } catch (err) {
       toast.error('Failed to load project details.')
       navigate('/projects')
@@ -48,6 +63,60 @@ const ProjectDetail = () => {
   useEffect(() => {
     fetchProjectData()
   }, [id])
+
+  // ── Create Single Unit ───────────────────────────────────────────────────
+  const handleCreateSingle = async (e) => {
+    e.preventDefault()
+    if (!singleUnit.unitNumber) { toast.error('Unit Number is required.'); return }
+    try {
+      setSingleSaving(true)
+      await api.post('/units', {
+        projectId: parseInt(id),
+        unitTypeId: singleUnit.unitTypeId ? parseInt(singleUnit.unitTypeId) : null,
+        unitNumber: singleUnit.unitNumber,
+        floor: singleUnit.floor ? parseInt(singleUnit.floor) : null,
+        carpetArea: singleUnit.carpetArea ? parseFloat(singleUnit.carpetArea) : null
+      })
+      toast.success(`Unit ${singleUnit.unitNumber} added! ✅`)
+      setOpenSingleModal(false)
+      setSingleUnit({ unitTypeId: '', unitNumber: '', floor: '', carpetArea: '' })
+      fetchProjectData()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to add unit.')
+    } finally {
+      setSingleSaving(false)
+    }
+  }
+
+  // ── Bulk Generate Units ──────────────────────────────────────────────────
+  const handleCreateBulk = async (e) => {
+    e.preventDefault()
+    const { unitTypeId, floor, carpetArea, prefix, startNumber, count } = bulkUnit
+    if (!startNumber || !count) { toast.error('Start Number and Count are required.'); return }
+    try {
+      setBulkSaving(true)
+      const startNum = parseInt(startNumber)
+      const qty = parseInt(count)
+      const generatedUnits = []
+      for (let i = 0; i < qty; i++) {
+        generatedUnits.push({
+          unitNumber: `${prefix}${startNum + i}`,
+          unitTypeId: unitTypeId ? parseInt(unitTypeId) : null,
+          floor: floor ? parseInt(floor) : null,
+          carpetArea: carpetArea ? parseFloat(carpetArea) : null
+        })
+      }
+      await api.post('/units/bulk', { projectId: parseInt(id), units: generatedUnits })
+      toast.success(`✅ ${qty} units generated!`)
+      setOpenBulkModal(false)
+      setBulkUnit({ unitTypeId: '', floor: '', carpetArea: '', prefix: '', startNumber: '101', count: '5' })
+      fetchProjectData()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to bulk generate units.')
+    } finally {
+      setBulkSaving(false)
+    }
+  }
 
   if (loading) {
     return <LoadingSpinner center={true} size="lg" />
@@ -72,6 +141,17 @@ const ProjectDetail = () => {
     )
   })
 
+  const tabStyle = (tab) => ({
+    background: 'none',
+    border: 'none',
+    borderBottom: activeTab === tab ? '2px solid var(--accent-primary)' : '2px solid transparent',
+    color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
+    padding: '10px 16px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 600
+  })
+
   return (
     <div>
       {/* Page Header */}
@@ -85,7 +165,7 @@ const ProjectDetail = () => {
             🏢 {project.developerName} | 📍 {project.location}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <Link to="/projects" className="btn btn-secondary">
             ← Back to Mandates
           </Link>
@@ -108,55 +188,30 @@ const ProjectDetail = () => {
       )}
 
       {/* Tabs Menu */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-primary)', marginBottom: '24px', gap: '20px' }}>
-        <button
-          className={`btn-tab ${activeTab === 'units' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('units'); setSearchQuery(''); setStatusFilter('ALL') }}
-          style={{
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'units' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-            color: activeTab === 'units' ? 'var(--text-primary)' : 'var(--text-secondary)',
-            padding: '10px 16px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 600
-          }}
-        >
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-primary)', marginBottom: '24px', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <button onClick={() => { setActiveTab('units'); setSearchQuery(''); setStatusFilter('ALL') }} style={tabStyle('units')}>
           🔲 Units Grid ({units.length})
         </button>
-        <button
-          className={`btn-tab ${activeTab === 'deals' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('deals'); setSearchQuery('') }}
-          style={{
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'deals' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-            color: activeTab === 'deals' ? 'var(--text-primary)' : 'var(--text-secondary)',
-            padding: '10px 16px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 600
-          }}
-        >
+        <button onClick={() => { setActiveTab('deals'); setSearchQuery('') }} style={tabStyle('deals')}>
           🤝 Booked Deals ({deals.length})
         </button>
-        <button
-          className={`btn-tab ${activeTab === 'reports' ? 'active' : ''}`}
-          onClick={() => setActiveTab('reports')}
-          style={{
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'reports' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-            color: activeTab === 'reports' ? 'var(--text-primary)' : 'var(--text-secondary)',
-            padding: '10px 16px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 600
-          }}
-        >
+        <button onClick={() => setActiveTab('reports')} style={tabStyle('reports')}>
           📊 Mandate Reports
         </button>
+
+        {/* Add Unit Buttons — shown only on Units tab for Admin/Staff */}
+        {activeTab === 'units' && !isDeveloper() && (
+          <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => setOpenSingleModal(true)}>
+              ➕ Add Unit
+            </button>
+            {isAdmin() && (
+              <button className="btn btn-primary btn-sm" onClick={() => setOpenBulkModal(true)}>
+                🗂️ Bulk Generate
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Search & Filter Bar for tabs */}
@@ -195,9 +250,13 @@ const ProjectDetail = () => {
       {/* Tab Contents: Units */}
       {activeTab === 'units' && (
         filteredUnits.length === 0 ? (
-          <EmptyState icon="🔲" title="No units match filter" message="Adjust your filters or query to find units." />
+          <EmptyState
+            icon="🔲"
+            title={units.length === 0 ? "No units added yet" : "No units match filter"}
+            message={units.length === 0 ? "Click 'Add Unit' above to start adding units to this project." : "Adjust your filters or query to find units."}
+          />
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '16px' }}>
             {filteredUnits.map((u) => {
               const hasDeal = u.deal && u.status !== 'AVAILABLE'
               const statusColor = 
@@ -234,9 +293,19 @@ const ProjectDetail = () => {
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>
                     {u.unitNumber}
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
                     {u.unitType?.typeName || '—'}
                   </div>
+                  {u.carpetArea && (
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                      {u.carpetArea} Sq Yd
+                    </div>
+                  )}
+                  {u.floor !== null && u.floor !== undefined && (
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                      Floor {u.floor}
+                    </div>
+                  )}
                   <span
                     style={{
                       fontSize: '9px',
@@ -352,6 +421,156 @@ const ProjectDetail = () => {
           </div>
         </div>
       )}
+
+      {/* ── Add Single Unit Modal ─────────────────────────────────────────────── */}
+      <Modal open={openSingleModal} onClose={() => setOpenSingleModal(false)} title={`Add Single Unit — ${project.name}`}>
+        <form onSubmit={handleCreateSingle}>
+          <div className="form-row-2">
+            <FormField label="Unit Number" required hint="e.g. A-101, B-504, Shop-12">
+              <input
+                className="form-input"
+                placeholder="Unit identifier"
+                value={singleUnit.unitNumber}
+                onChange={e => setSingleUnit({ ...singleUnit, unitNumber: e.target.value })}
+                required
+              />
+            </FormField>
+            <FormField label="Unit Configuration (Type)">
+              <select
+                className="form-select"
+                value={singleUnit.unitTypeId}
+                onChange={e => setSingleUnit({ ...singleUnit, unitTypeId: e.target.value })}
+              >
+                <option value="">-- General Unit / No Type --</option>
+                {unitTypes.map(ut => (
+                  <option key={ut.id} value={ut.id}>{ut.typeName}</option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+
+          <div className="form-row-2">
+            <FormField label="Floor Number" hint="Numeric value only">
+              <input
+                type="number"
+                className="form-input"
+                placeholder="e.g. 5"
+                value={singleUnit.floor}
+                onChange={e => setSingleUnit({ ...singleUnit, floor: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Area (Sq Yards)" hint="Super Built-Up Area in Sq Yards">
+              <input
+                type="number"
+                step="0.01"
+                className="form-input"
+                placeholder="e.g. 30.50"
+                value={singleUnit.carpetArea}
+                onChange={e => setSingleUnit({ ...singleUnit, carpetArea: e.target.value })}
+              />
+            </FormField>
+          </div>
+
+          <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setOpenSingleModal(false)} disabled={singleSaving}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={singleSaving}>
+              {singleSaving ? 'Adding... ⏳' : 'Save Unit ✅'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Bulk Generate Units Modal ─────────────────────────────────────────── */}
+      <Modal open={openBulkModal} onClose={() => setOpenBulkModal(false)} title={`Bulk Generate Units — ${project.name}`}>
+        <form onSubmit={handleCreateBulk}>
+          <FormField label="Unit Configuration (Type)">
+            <select
+              className="form-select"
+              value={bulkUnit.unitTypeId}
+              onChange={e => setBulkUnit({ ...bulkUnit, unitTypeId: e.target.value })}
+            >
+              <option value="">-- General Unit / No Type --</option>
+              {unitTypes.map(ut => (
+                <option key={ut.id} value={ut.id}>{ut.typeName}</option>
+              ))}
+            </select>
+          </FormField>
+
+          <div className="form-row-2">
+            <FormField label="Floor Number" hint="Apply same floor to all bulk units">
+              <input
+                type="number"
+                className="form-input"
+                placeholder="e.g. 2"
+                value={bulkUnit.floor}
+                onChange={e => setBulkUnit({ ...bulkUnit, floor: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Area (Sq Yards)" hint="Super Built-Up Area in Sq Yards">
+              <input
+                type="number"
+                step="0.01"
+                className="form-input"
+                placeholder="e.g. 30.50"
+                value={bulkUnit.carpetArea}
+                onChange={e => setBulkUnit({ ...bulkUnit, carpetArea: e.target.value })}
+              />
+            </FormField>
+          </div>
+
+          <div className="form-row-3">
+            <FormField label="Number Prefix" hint="e.g. 'A-', 'Shop-'">
+              <input
+                className="form-input"
+                placeholder="e.g. A-"
+                value={bulkUnit.prefix}
+                onChange={e => setBulkUnit({ ...bulkUnit, prefix: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Starting Number" required>
+              <input
+                type="number"
+                className="form-input"
+                value={bulkUnit.startNumber}
+                onChange={e => setBulkUnit({ ...bulkUnit, startNumber: e.target.value })}
+                required
+              />
+            </FormField>
+            <FormField label="Count" required hint="Total units to generate">
+              <input
+                type="number"
+                className="form-input"
+                value={bulkUnit.count}
+                onChange={e => setBulkUnit({ ...bulkUnit, count: e.target.value })}
+                required
+                min="1"
+                max="200"
+              />
+            </FormField>
+          </div>
+
+          {bulkUnit.prefix && bulkUnit.startNumber && bulkUnit.count && (
+            <div style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.2)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              📋 Preview: <strong style={{ color: 'var(--accent-primary)' }}>
+                {bulkUnit.prefix}{bulkUnit.startNumber}
+              </strong> to <strong style={{ color: 'var(--accent-primary)' }}>
+                {bulkUnit.prefix}{parseInt(bulkUnit.startNumber) + parseInt(bulkUnit.count) - 1}
+              </strong> ({bulkUnit.count} units total)
+            </div>
+          )}
+
+          <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setOpenBulkModal(false)} disabled={bulkSaving}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={bulkSaving}>
+              {bulkSaving ? 'Generating... ⏳' : `Generate ${bulkUnit.count || 0} Units 🗂️`}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

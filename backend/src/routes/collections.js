@@ -5,6 +5,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { handleValidation } = require('../middleware/errorHandler');
 const { auditMiddleware } = require('../middleware/auditLog');
 const { computePaymentStatus } = require('../services/alertsService');
+const { generateVoucherNumber } = require('../services/voucherService');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -52,6 +53,9 @@ router.post('/margin/:installmentId/receive', authorize('ADMIN', 'STAFF'), [
     const due = parseFloat(item.amount);
     const status = received >= due ? 'RECEIVED' : 'PARTIAL';
 
+    // Auto-generate receipt number if not provided
+    const finalReceiptNumber = receiptNumber?.trim() || generateVoucherNumber('RCP');
+
     const old = { status: item.status, receivedAmount: item.receivedAmount, receivedDate: item.receivedDate };
     const updated = await prisma.marginSchedule.update({
       where: { id },
@@ -59,13 +63,13 @@ router.post('/margin/:installmentId/receive', authorize('ADMIN', 'STAFF'), [
         receivedDate: new Date(receivedDate),
         receivedAmount: received,
         paymentMode,
-        receiptNumber: receiptNumber || null,
+        receiptNumber: finalReceiptNumber,
         status
       }
     });
 
-    await req.audit('MarginSchedule', id, 'MARK_RECEIVED', old, { receivedAmount: received, status, paymentMode });
-    res.json({ success: true, data: { ...updated, computedStatus: status } });
+    await req.audit('MarginSchedule', id, 'MARK_RECEIVED', old, { receivedAmount: received, status, paymentMode, receiptNumber: finalReceiptNumber });
+    res.json({ success: true, data: { ...updated, computedStatus: status, receiptNumber: finalReceiptNumber } });
   } catch (err) { next(err); }
 });
 
@@ -131,14 +135,17 @@ router.post('/loan/:installmentId/receive', authorize('ADMIN', 'STAFF'), [
     const due = parseFloat(item.amount);
     const status = received >= due ? 'RECEIVED' : 'PARTIAL';
 
+    // Auto-generate receipt number for loan disbursements
+    const receiptNumber = generateVoucherNumber('RCP');
+
     const old = { status: item.status, receivedAmount: item.receivedAmount };
     const updated = await prisma.loanSchedule.update({
       where: { id },
       data: { receivedDate: new Date(receivedDate), receivedAmount: received, status }
     });
 
-    await req.audit('LoanSchedule', id, 'MARK_RECEIVED', old, { receivedAmount: received, status });
-    res.json({ success: true, data: { ...updated, computedStatus: status } });
+    await req.audit('LoanSchedule', id, 'MARK_RECEIVED', old, { receivedAmount: received, status, receiptNumber });
+    res.json({ success: true, data: { ...updated, computedStatus: status, receiptNumber } });
   } catch (err) { next(err); }
 });
 

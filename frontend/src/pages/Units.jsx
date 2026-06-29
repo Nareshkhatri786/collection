@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
@@ -46,6 +46,14 @@ const Units = () => {
   })
   const [bulkSaving, setBulkSaving] = useState(false)
 
+  // CSV Import Modal State
+  const [openImportModal, setOpenImportModal] = useState(false)
+  const [importProjectId, setImportProjectId] = useState('')
+  const [importRows, setImportRows] = useState([])
+  const [importSaving, setImportSaving] = useState(false)
+  const [importError, setImportError] = useState('')
+  const fileInputRef = useRef(null)
+
   // Pagination
   const [page, setPage] = useState(1)
   const limit = 15
@@ -63,6 +71,66 @@ const Units = () => {
       toast.error('Failed to load units database.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ── CSV Import Logic ──────────────────────────────────────────────────────
+  const parseCSV = (text) => {
+    const lines = text.trim().split('\n')
+    if (lines.length < 2) return []
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z0-9]/g, ''))
+    return lines.slice(1).map(line => {
+      const cols = line.split(',')
+      const row = {}
+      headers.forEach((h, i) => { row[h] = (cols[i] || '').trim() })
+      return row
+    }).filter(r => r.unitnumber || r.unit)
+  }
+
+  const handleCSVFile = (e) => {
+    setImportError('')
+    setImportRows([])
+    const file = e.target.files[0]
+    if (!file) return
+    const ext = file.name.split('.').pop().toLowerCase()
+    if (!['csv', 'txt'].includes(ext)) {
+      setImportError('Please upload a CSV file (.csv). For Excel files, first save as CSV from Excel.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const rows = parseCSV(ev.target.result)
+      if (!rows.length) {
+        setImportError('No valid rows found. Make sure your CSV has a header row with: UnitNumber, Floor, AreaSqYards')
+        return
+      }
+      setImportRows(rows)
+    }
+    reader.readAsText(file)
+  }
+
+  const handleImportSubmit = async () => {
+    if (!importProjectId) { toast.error('Please select a project first.'); return }
+    if (!importRows.length) { toast.error('No data rows to import.'); return }
+    setImportSaving(true)
+    try {
+      const units = importRows.map(r => ({
+        unitNumber: r.unitnumber || r.unit || '',
+        floor: r.floor ? parseInt(r.floor) : null,
+        carpetArea: r.areasqyards || r.area || r.carpetarea ? parseFloat(r.areasqyards || r.area || r.carpetarea) : null,
+        unitTypeId: null
+      })).filter(u => u.unitNumber)
+      await api.post('/units/bulk', { projectId: parseInt(importProjectId), units })
+      toast.success(`✅ Successfully imported ${units.length} units!`)
+      setOpenImportModal(false)
+      setImportRows([])
+      setImportProjectId('')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      fetchData()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Import failed.')
+    } finally {
+      setImportSaving(false)
     }
   }
 
@@ -189,13 +257,19 @@ const Units = () => {
           <p>Search, filter, and audit individual units in real-time</p>
         </div>
         {!isDeveloper() && (
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button className="btn btn-secondary" onClick={() => setOpenSingleModal(true)}>
               ➕ Single Unit
             </button>
             {isAdmin() && (
               <button className="btn btn-primary" onClick={() => setOpenBulkModal(true)}>
-                🗂️ Bulk Add Units
+                🗂️ Bulk Generate
+              </button>
+            )}
+            {isAdmin() && (
+              <button className="btn btn-ghost" onClick={() => setOpenImportModal(true)}
+                style={{ border: '1px dashed var(--border-primary)', color: 'var(--text-secondary)' }}>
+                📂 Import CSV
               </button>
             )}
           </div>
@@ -257,7 +331,7 @@ const Units = () => {
                   <th>Project</th>
                   <th>Type</th>
                   <th>Floor</th>
-                  <th>Carpet Area</th>
+                  <th>Area (Sq Yards)</th>
                   <th>Status</th>
                   <th>Client Linked</th>
                   {!isDeveloper() && <th style={{ textAlign: 'right' }}>Actions</th>}
@@ -270,7 +344,7 @@ const Units = () => {
                     <td>{u.project?.name}</td>
                     <td>{u.unitType?.typeName || '—'}</td>
                     <td>{u.floor ?? '—'}</td>
-                    <td>{u.carpetArea ? `${u.carpetArea} sqft` : '—'}</td>
+                    <td>{u.carpetArea ? `${u.carpetArea} Sq Yd` : '—'}</td>
                     <td><StatusBadge status={u.status} type="unit" /></td>
                     <td>
                       {u.deal?.client?.name ? (
@@ -365,12 +439,12 @@ const Units = () => {
               />
             </FormField>
 
-            <FormField label="Carpet Area (sqft)" hint="e.g. 785.45">
+            <FormField label="Area (Sq Yards)" hint="Super Built-Up Area in Sq Yards">
               <input
                 type="number"
                 step="0.01"
                 className="form-input"
-                placeholder="Carpet area"
+                placeholder="e.g. 30.50"
                 value={singleUnit.carpetArea}
                 onChange={e => setSingleUnit({ ...singleUnit, carpetArea: e.target.value })}
               />
@@ -432,12 +506,12 @@ const Units = () => {
               />
             </FormField>
 
-            <FormField label="Carpet Area (sqft)">
+            <FormField label="Area (Sq Yards)" hint="Super Built-Up Area in Sq Yards">
               <input
                 type="number"
                 step="0.01"
                 className="form-input"
-                placeholder="sqft value"
+                placeholder="e.g. 30.50"
                 value={bulkUnit.carpetArea}
                 onChange={e => setBulkUnit({ ...bulkUnit, carpetArea: e.target.value })}
               />
@@ -486,6 +560,135 @@ const Units = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* CSV Import Modal */}
+      <Modal open={openImportModal} onClose={() => { setOpenImportModal(false); setImportRows([]); setImportError('') }} title="📂 Import Units from CSV">
+        <div>
+          {/* Instructions */}
+          <div style={{ background: 'rgba(79,142,247,0.06)', border: '1px solid rgba(79,142,247,0.25)', borderRadius: 'var(--radius-md)', padding: '14px 16px', marginBottom: '20px', fontSize: '13px' }}>
+            <strong style={{ color: 'var(--accent-primary)' }}>📋 CSV Format Required:</strong>
+            <div style={{ marginTop: '8px', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+              Your CSV file must have a <strong>header row</strong> with these column names:
+              <br />
+              <code style={{ background: 'var(--bg-primary)', padding: '3px 7px', borderRadius: '4px', display: 'inline-block', marginTop: '6px' }}>
+                UnitNumber, Floor, AreaSqYards
+              </code>
+              <br /><br />
+              <strong>Example CSV rows:</strong><br />
+              <code style={{ background: 'var(--bg-primary)', padding: '5px 10px', borderRadius: '4px', display: 'block', marginTop: '4px', fontSize: '12px', whiteSpace: 'pre' }}>
+{`UnitNumber,Floor,AreaSqYards
+A-101,1,28.5
+A-102,1,28.5
+B-201,2,35.0`}
+              </code>
+              <div style={{ marginTop: '8px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                💡 For Excel: Go to File → Save As → CSV (Comma delimited). Then upload that .csv file here.
+              </div>
+            </div>
+          </div>
+
+          {/* Project Selector */}
+          <FormField label="Select Project" required>
+            <select
+              className="form-select"
+              value={importProjectId}
+              onChange={e => setImportProjectId(e.target.value)}
+            >
+              <option value="">-- Choose Project to Import Into --</option>
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </FormField>
+
+          {/* File Upload */}
+          <FormField label="Upload CSV File">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: '2px dashed var(--border-primary)',
+                borderRadius: 'var(--radius-md)',
+                padding: '24px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                background: 'var(--bg-secondary)'
+              }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent-primary)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+            >
+              <div style={{ fontSize: '30px', marginBottom: '8px' }}>📁</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Click to select CSV file</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Supports .csv files only</div>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.txt"
+              style={{ display: 'none' }}
+              onChange={handleCSVFile}
+            />
+          </FormField>
+
+          {/* Error */}
+          {importError && (
+            <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', color: 'var(--accent-error)', marginBottom: '16px', fontSize: '13px' }}>
+              ⚠️ {importError}
+            </div>
+          )}
+
+          {/* Preview Table */}
+          {importRows.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <strong style={{ color: 'var(--accent-success)' }}>✅ {importRows.length} rows ready to import</strong>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Showing first 5 rows preview</span>
+              </div>
+              <div className="table-container" style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                <table className="data-table" style={{ fontSize: '12px' }}>
+                  <thead>
+                    <tr>
+                      <th>Unit Number</th>
+                      <th>Floor</th>
+                      <th>Area (Sq Yards)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importRows.slice(0, 5).map((r, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: 600 }}>{r.unitnumber || r.unit || '—'}</td>
+                        <td>{r.floor || '—'}</td>
+                        <td>{r.areasqyards || r.area || '—'}</td>
+                      </tr>
+                    ))}
+                    {importRows.length > 5 && (
+                      <tr>
+                        <td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          ...and {importRows.length - 5} more rows
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => { setOpenImportModal(false); setImportRows([]); setImportError('') }} disabled={importSaving}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleImportSubmit}
+              disabled={importSaving || !importRows.length || !importProjectId}
+            >
+              {importSaving ? 'Importing... ⏳' : `Import ${importRows.length} Units 📂`}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

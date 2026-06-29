@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import Modal from '../components/ui/Modal'
 import FormField from '../components/ui/FormField'
+import ReceiptButton from '../components/ui/ReceiptButton'
 import toast from 'react-hot-toast'
 
 const DealDetail = () => {
@@ -108,8 +109,19 @@ const DealDetail = () => {
         endpoint = `/cash/${selectedInstallment.id}/receive`
       }
 
-      await api.post(endpoint, payload)
-      toast.success('Collection logged successfully! 💰')
+      const res = await api.post(endpoint, payload)
+      const rNo = res.data.data?.receiptNumber
+      if (rNo) {
+        toast.success(
+          <div>
+            <div>✅ Collection logged!</div>
+            <div style={{ fontSize: '11px', marginTop: '4px', fontFamily: 'monospace', color: '#a3e635' }}>🧾 {rNo}</div>
+          </div>,
+          { duration: 5000 }
+        )
+      } else {
+        toast.success('Collection logged successfully! 💰')
+      }
       setOpenReceiveModal(false)
       fetchAllData()
     } catch (err) {
@@ -338,11 +350,16 @@ const DealDetail = () => {
                       </td>
                       {!isDeveloper() && (
                         <td style={{ textAlign: 'right' }}>
-                          {row.status !== 'RECEIVED' && (
-                            <button className="btn btn-primary btn-sm" onClick={() => openReceiveForm('margin', row)}>
-                              Mark Receipt 💰
-                            </button>
-                          )}
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            {(row.status === 'RECEIVED' || row.status === 'PARTIAL') && (
+                              <ReceiptButton type="margin" id={row.id} label="🧾 Receipt" />
+                            )}
+                            {row.status !== 'RECEIVED' && (
+                              <button className="btn btn-primary btn-sm" onClick={() => openReceiveForm('margin', row)}>
+                                Mark Receipt 💰
+                              </button>
+                            )}
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -401,11 +418,16 @@ const DealDetail = () => {
                         </td>
                         {!isDeveloper() && (
                           <td style={{ textAlign: 'right' }}>
-                            {row.status !== 'RECEIVED' && (
-                              <button className="btn btn-primary btn-sm" onClick={() => openReceiveForm('loan', row)}>
-                                Log Disburse 🏦
-                              </button>
-                            )}
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                              {(row.status === 'RECEIVED' || row.status === 'PARTIAL') && (
+                                <ReceiptButton type="loan" id={row.id} label="🧾 Receipt" />
+                              )}
+                              {row.status !== 'RECEIVED' && (
+                                <button className="btn btn-primary btn-sm" onClick={() => openReceiveForm('loan', row)}>
+                                  Log Disburse 🏦
+                                </button>
+                              )}
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -467,11 +489,16 @@ const DealDetail = () => {
                         </td>
                         {!isDeveloper() && (
                           <td style={{ textAlign: 'right' }}>
-                            {row.status !== 'RECEIVED' && (
-                              <button className="btn btn-primary btn-sm" onClick={() => openReceiveForm('cash', row)}>
-                                Log Cash 🪙
-                              </button>
-                            )}
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                              {(row.status === 'RECEIVED' || row.status === 'PARTIAL') && (
+                                <ReceiptButton type="cash" id={row.id} label="🧾 Receipt" />
+                              )}
+                              {row.status !== 'RECEIVED' && (
+                                <button className="btn btn-primary btn-sm" onClick={() => openReceiveForm('cash', row)}>
+                                  Log Cash 🪙
+                                </button>
+                              )}
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -510,14 +537,24 @@ const DealDetail = () => {
                 <tbody>
                   {deal.labourPayments.map((row) => (
                     <tr key={row.id}>
-                      <td>{new Date(row.paidDate).toLocaleDateString()}</td>
+                      <td>
+                        {new Date(row.paidDate).toLocaleDateString()}
+                        {row.voucherNumber && (
+                          <div style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {row.voucherNumber}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ fontWeight: 700, color: 'var(--accent-danger)' }}>{formatINR(row.amount)}</td>
                       <td>{row.description || 'Contractor payment'}</td>
                       <td>👤 {row.paidByUser?.name}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDeleteLabour(row.id)}>
-                          Delete
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          <ReceiptButton type="labour" id={row.id} label="📄 Voucher" />
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDeleteLabour(row.id)}>
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -688,6 +725,16 @@ const DealDetail = () => {
               onChange={e => setLabourForm({ ...labourForm, amount: e.target.value })}
               required
             />
+            {labourForm.amount && parseFloat(labourForm.amount) > 10000 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px',
+                padding: '8px 10px', background: 'rgba(251,146,60,0.1)',
+                border: '1px solid rgba(251,146,60,0.3)', borderRadius: '6px',
+                fontSize: '12px', color: '#fb923c'
+              }}>
+                ⚠️ <strong>Policy Alert:</strong> Cash payment above ₹10,000 requires Admin approval. Ensure this is authorized.
+              </div>
+            )}
           </FormField>
 
           <FormField label="Contractor Description / Remarks">

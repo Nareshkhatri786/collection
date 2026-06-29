@@ -32,7 +32,7 @@ const Step3_Amounts = ({ formData, update, onNext, onPrev }) => {
       <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '24px', fontSize: '13px', display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
         <span>🏗️ <strong>{project?.name}</strong></span>
         <span>🏢 Unit: <strong>{formData.unit?.unitNumber}</strong> — {formData.unit?.unitType?.typeName}</span>
-        <span>📐 {formData.unit?.carpetArea} sq ft | Floor {formData.unit?.floor}</span>
+        <span>📐 {formData.unit?.carpetArea} Sq Yd | Floor {formData.unit?.floor}</span>
         <StatusBadge status={project?.status} type="project" />
       </div>
 

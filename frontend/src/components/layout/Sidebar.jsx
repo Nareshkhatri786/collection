@@ -136,11 +136,16 @@ const Sidebar = ({ isOpen, onClose }) => {
         <NavItem to="/reports" icon={<IconReports />} label="Reports" />
         <NavItem to="/alerts" icon={<IconAlerts />} label="Alerts" />
 
-        {isAdmin() && (
+        {isAdmin() ? (
           <>
             <div className="nav-section-label">Administration</div>
             <NavItem to="/users" icon={<IconUsers />} label="User Management" />
             <NavItem to="/audit-log" icon={<IconAudit />} label="Audit Log" />
+          </>
+        ) : (
+          <>
+            <div className="nav-section-label">Account</div>
+            <NavItem to="/users" icon={<IconUsers />} label="My Account" />
           </>
         )}
       </nav>

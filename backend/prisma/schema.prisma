@@ -233,6 +233,7 @@ model CashSchedule {
   amount         Decimal       @db.Decimal(12, 2)
   receivedDate   DateTime?
   receivedAmount Decimal?      @db.Decimal(12, 2)
+  receiptNumber  String?       // System-generated receipt number (e.g. RCP-2506-0001)
   status         PaymentStatus @default(PENDING)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -243,13 +244,14 @@ model CashSchedule {
 }
 
 model LabourPayment {
-  id          Int      @id @default(autoincrement())
-  dealId      Int
-  paidDate    DateTime
-  amount      Decimal  @db.Decimal(12, 2)
-  description String?
-  paidBy      Int?
-  createdAt   DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  dealId        Int
+  paidDate      DateTime
+  amount        Decimal  @db.Decimal(12, 2)
+  description   String?
+  paidBy        Int?
+  voucherNumber String?  // System-generated cash voucher number (e.g. CVR-2506-0001)
+  createdAt     DateTime @default(now())
 
   deal       Deal  @relation(fields: [dealId], references: [id], onDelete: Cascade)
   paidByUser User? @relation(fields: [paidBy], references: [id])

@@ -8,7 +8,7 @@ import EmptyState from '../components/ui/EmptyState'
 import toast from 'react-hot-toast'
 
 const Users = () => {
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, isAdmin } = useAuth()
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
@@ -27,20 +27,27 @@ const Users = () => {
   // Password Reset Modal State
   const [openResetModal, setOpenResetModal] = useState(false)
   const [resetUserId, setResetUserId] = useState('')
+  const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [resetting, setResetting] = useState(false)
 
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [usersRes, projRes] = await Promise.all([
-        api.get('/users'),
-        api.get('/projects')
-      ])
-      setUsers(usersRes.data.data)
-      setProjects(projRes.data.data)
+      if (isAdmin()) {
+        const [usersRes, projRes] = await Promise.all([
+          api.get('/users'),
+          api.get('/projects')
+        ])
+        setUsers(usersRes.data.data)
+        setProjects(projRes.data.data)
+      } else {
+        const res = await api.get('/auth/me')
+        setUsers([res.data.data])
+      }
     } catch (err) {
-      toast.error('Failed to load user management lists.')
+      toast.error('Failed to load profile/user management data.')
     } finally {
       setLoading(false)
     }
@@ -127,17 +134,52 @@ const Users = () => {
   const handleResetPassword = async (e) => {
     e.preventDefault()
     if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters.')
+      toast.error('New password must be at least 6 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('New password and confirm password do not match.')
       return
     }
     try {
       setResetting(true)
-      await api.post(`/users/${resetUserId}/reset-password`, { newPassword })
-      toast.success('Password reset successfully! 🔐')
+      if (resetUserId === currentUser?.id) {
+        await api.post('/auth/change-password', { oldPassword, newPassword })
+        toast.success('Your password changed successfully! 🔐')
+      } else {
+        await api.post(`/users/${resetUserId}/reset-password`, { newPassword })
+        toast.success('User password reset successfully! 🔐')
+      }
       setOpenResetModal(false)
+      setOldPassword('')
       setNewPassword('')
+      setConfirmPassword('')
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to reset password.')
+      toast.error(err.response?.data?.error || 'Failed to update password.')
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  const handleSelfPasswordChange = async (e) => {
+    e.preventDefault()
+    if (newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('New password and confirm password do not match.')
+      return
+    }
+    try {
+      setResetting(true)
+      await api.post('/auth/change-password', { oldPassword, newPassword })
+      toast.success('Your password changed successfully! 🔐')
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update password.')
     } finally {
       setResetting(false)
     }
@@ -151,17 +193,117 @@ const Users = () => {
     <div>
       <div className="page-header">
         <div>
-          <h1>User Account Management</h1>
-          <p>Configure access, reset passwords, and assign project mandates for agent staff</p>
+          <h1>{isAdmin() ? 'User Account Management' : 'My Account Settings'}</h1>
+          <p>
+            {isAdmin()
+              ? 'Configure access, reset passwords, and assign project mandates for agent staff'
+              : 'Manage your profile and update your password'}
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setOpenCreateModal(true)}>
-          👤 Create User Account
-        </button>
+        {isAdmin() && (
+          <button className="btn btn-primary" onClick={() => setOpenCreateModal(true)}>
+            👤 Create User Account
+          </button>
+        )}
       </div>
 
-      {/* Users table list */}
-      {users.length === 0 ? (
-        <EmptyState icon="👤" title="No users found" message="No accounts registered." />
+      {!isAdmin() ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+          {/* Profile Info Card */}
+          <div className="card">
+            <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              👤 Profile Details
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Full Name</label>
+                <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '4px' }}>{currentUser?.name}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email / Login ID</label>
+                <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '4px' }}>{currentUser?.email}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Access Role</label>
+                <div style={{ marginTop: '6px' }}>
+                  <span className={`badge ${
+                    currentUser?.role === 'ADMIN' ? 'badge-danger' : 
+                    currentUser?.role === 'DEVELOPER' ? 'badge-warning' : 
+                    'badge-primary'
+                  }`} style={{ fontSize: '10px' }}>
+                    {currentUser?.role}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Assigned Project Mandates</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                  {currentUser?.assignedProjects && currentUser.assignedProjects.length > 0 ? (
+                    currentUser.assignedProjects.map(p => (
+                      <span key={p.id} className="badge badge-secondary" style={{ fontSize: '10px' }}>
+                        {p.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                      {currentUser?.role === 'ADMIN' ? 'Full Mandate Access' : 'No projects assigned'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Change Password Card */}
+          <div className="card">
+            <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              🔒 Change Password
+            </h3>
+            <form onSubmit={handleSelfPasswordChange}>
+              <FormField label="Current Password" required>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="••••••••"
+                  value={oldPassword}
+                  onChange={e => setOldPassword(e.target.value)}
+                  required
+                />
+              </FormField>
+
+              <FormField label="New Password" required hint="Must be at least 6 characters">
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  required
+                />
+              </FormField>
+
+              <FormField label="Confirm New Password" required>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </FormField>
+
+              <button
+                type="submit"
+                className="btn btn-primary btn-lg"
+                style={{ width: '100%', marginTop: '10px' }}
+                disabled={resetting}
+              >
+                {resetting ? 'Updating Password... ⏳' : 'Update Password 🔐'}
+              </button>
+            </form>
+          </div>
+        </div>
       ) : (
         <div className="table-container">
           <table className="data-table">
@@ -219,11 +361,17 @@ const Users = () => {
                       </button>
                     )}
                     <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => { setResetUserId(u.id); setOpenResetModal(true) }}
+                      className={`btn ${u.id === currentUser?.id ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                      onClick={() => {
+                        setResetUserId(u.id);
+                        setOldPassword('');
+                        setNewPassword('');
+                        setConfirmPassword('');
+                        setOpenResetModal(true);
+                      }}
                       style={{ marginRight: '8px' }}
                     >
-                      🔐 Reset Pass
+                      {u.id === currentUser?.id ? '🔑 Change Password' : '🔐 Reset Pass'}
                     </button>
                     {u.id !== currentUser?.id && (
                       <button
@@ -351,8 +499,21 @@ const Users = () => {
       </Modal>
 
       {/* Reset Password Modal */}
-      <Modal open={openResetModal} onClose={() => setOpenResetModal(false)} title="Reset User Password">
+      <Modal open={openResetModal} onClose={() => setOpenResetModal(false)} title={resetUserId === currentUser?.id ? "Change Your Password" : "Reset User Password"}>
         <form onSubmit={handleResetPassword}>
+          {resetUserId === currentUser?.id && (
+            <FormField label="Current Password" required>
+              <input
+                type="password"
+                className="form-input"
+                placeholder="••••••••"
+                value={oldPassword}
+                onChange={e => setOldPassword(e.target.value)}
+                required
+              />
+            </FormField>
+          )}
+
           <FormField label="Enter New Password" required hint="Must be at least 6 characters">
             <input
               type="password"
@@ -360,6 +521,17 @@ const Users = () => {
               placeholder="••••••••"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
+              required
+            />
+          </FormField>
+
+          <FormField label="Confirm New Password" required>
+            <input
+              type="password"
+              className="form-input"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
               required
             />
           </FormField>

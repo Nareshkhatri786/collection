@@ -40,7 +40,6 @@ router.get('/', async (req, res, next) => {
         project: { select: { id: true, name: true } },
         unitType: { select: { typeName: true, basePrice: true } },
         deal: {
-          select: { id: true },
           include: { client: { select: { name: true, mobile: true } } }
         }
       },

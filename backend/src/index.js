@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 
 const authRoutes = require('./routes/auth');
@@ -16,6 +17,7 @@ const labourRoutes = require('./routes/labourPayments');
 const reportRoutes = require('./routes/reports');
 const alertRoutes = require('./routes/alerts');
 const auditRoutes = require('./routes/auditLogs');
+const voucherRoutes = require('./routes/vouchers');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -48,6 +50,7 @@ app.use('/api/labour', labourRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/audit-logs', auditRoutes);
+app.use('/api/vouchers', voucherRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -62,16 +65,38 @@ app.use((req, res) => {
 // Global error handler
 app.use(errorHandler);
 
+// Default admin initialization
+async function ensureDefaultAdmin() {
+  try {
+    const adminHash = await bcrypt.hash('Admin12341234', 12);
+    await prisma.user.upsert({
+      where: { email: 'admin' },
+      update: {},
+      create: {
+        name: 'Admin User',
+        email: 'admin',
+        passwordHash: adminHash,
+        role: 'ADMIN',
+        isActive: true
+      }
+    });
+    console.log('🛡️ Default admin user verified/created');
+  } catch (err) {
+    console.error('⚠️ Failed to ensure default admin user:', err);
+  }
+}
+
 // Graceful shutdown
 process.on('beforeExit', async () => {
   await prisma.$disconnect();
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`\n🏠 Property Collection API running on port ${PORT}`);
   console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health: http://localhost:${PORT}/api/health\n`);
+  await ensureDefaultAdmin();
 });
 
 module.exports = app;
